@@ -14,8 +14,16 @@
 
 #include "lcd1602.h"
 
-static int device_major;
-static struct class* cls;
+static int lcd1602_font_size = 7;
+static int lcd1602_line_no = 2;
+
+module_param(lcd1602_font_size, int, S_IRUSR | S_IRGRP);
+MODULE_PARM_DESC(lcd1602_font_size, "Font size to use for the initial configuration. Valid values: 7, 10");
+module_param(lcd1602_line_no, int, S_IRUSR | S_IRGRP);
+MODULE_PARM_DESC(lcd1602_line_no, "Number of lines to use for the initial configuration. Valid values: 1, 2");
+
+static int lcd1602_device_major;
+static struct class* lcd1602_cls;
 
 static struct lcd1602_gpiod_device lcd1602_gpio_dev;
 
@@ -238,18 +246,21 @@ static struct file_operations lcd1602_fops = {
 };
 
 static void lcd1602_setup_userspace(struct platform_device* pdev){
-    device_major = register_chrdev(0, pdev->name, &lcd1602_fops);
-    if (device_major < 0){
-        pr_alert("Could not register device: %d\n", device_major);
+    lcd1602_device_major = register_chrdev(0, pdev->name, &lcd1602_fops);
+    if (lcd1602_device_major < 0){
+        pr_alert("Could not register device: %d\n", lcd1602_device_major);
         return;
     }
 
-    cls = class_create(pdev->name);
-    device_create(cls, NULL, MKDEV(device_major, 0), NULL, pdev->name);
+    lcd1602_cls = class_create(pdev->name);
+    device_create(lcd1602_cls, NULL, MKDEV(lcd1602_device_major, 0), NULL, pdev->name);
 }
 
 static void lcd1602_setup_display(struct platform_device* pdev){
     struct device *dev = &pdev->dev;
+    int font_size, line_no;
+    font_size = lcd1602_font_size == 7 ? LCD1602_FONT_5X7 : LCD1602_FONT_5X10;
+    line_no = lcd1602_line_no == 1 ? LCD1602_1_LINE : LCD1602_2_LINES;
 
     lcd1602_verify_dt(dev);
 
@@ -260,7 +271,7 @@ static void lcd1602_setup_display(struct platform_device* pdev){
     lcd1602_get_display_gpios(&lcd1602_gpio_dev.dataBits, dev);
 
     lcd1602_reset_screen();
-    lcd1602_function_set(LCD1602_8BIT_INTERFACE, LCD1602_2_LINES, LCD1602_FONT_5X10);
+    lcd1602_function_set(LCD1602_8BIT_INTERFACE, line_no, font_size);
     lcd1602_display_control(LCD1602_DISPLAY_OFF, LCD1602_CURSOR_ON, LCD1602_CURSOR_BLINK_ON);
     lcd1602_display_control(LCD1602_DISPLAY_ON, LCD1602_CURSOR_ON, LCD1602_CURSOR_BLINK_ON);
     lcd1602_set_entry_mode(LCD1602_DISPLAY_SHIFT, LCD1602_SHIFT_TO_LEFT);
@@ -305,8 +316,8 @@ static int __init lcd1602_init(void){
 }
 
 static void __exit lcd1602_cleanup(void){
-    device_destroy(cls, MKDEV(device_major, 0));
-    class_destroy(cls);
+    device_destroy(lcd1602_cls, MKDEV(lcd1602_device_major, 0));
+    class_destroy(lcd1602_cls);
     platform_driver_unregister(&lcd1602_driver);
 }
 
