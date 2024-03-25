@@ -1,0 +1,40 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		// Configure the gpio pin controller
+		target = <&gpio>;
+		__overlay__ {
+			lcd1602_pin: lcd1602_pins {
+				brcm,pins = <0 1 12 13 16 19 20 21 24 25 26>; // gpio number
+				brcm,function = <1>; // 0 = input, 1 = output
+				brcm,pull = <0>; // 0 = none, 1 = pull down, 2 = pull up
+			};
+		};
+	};
+	fragment@1 {
+		target-path = "/";
+		__overlay__ {
+			lcd1602: lcd_4me {
+				compatible = "gardenVariety,lcd1602";
+				pinctrl-names = "default";
+				pinctrl-0 = <&lcd1602_pin>;
+				status = "okay";
+				ctrl-gpios = <&gpio 19 0>, // register select
+					     <&gpio 16 0>, // read/write
+					     <&gpio 0 0>; // enable
+				display-gpios = <&gpio 1  0>, // db0
+					        <&gpio 12  0>, // db1
+					        <&gpio 13  0>, // db2
+					        <&gpio 26 0>, // db3
+					        <&gpio 21  0>, // db4
+					        <&gpio 25 0>, // db5
+					        <&gpio 20 0>, // db6
+					        <&gpio 24 0>; // db7
+			};
+		};
+	};
+};
