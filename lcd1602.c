@@ -117,7 +117,8 @@ static int lcd1602_verify_dt(struct device* dev){
 static unsigned long lcd1602_get_char_value(char c){
     unsigned long ret = 0x20; // space
     size_t x, y;
-    for (x = 0; x < LCD1602_CHAR_MAP_X; ++x){
+    // the first 2 lines are only nulls. Start the search at the 3rd line.
+    for (x = 2; x < LCD1602_CHAR_MAP_X; ++x){
         for (y = 0; y < LCD1602_CHAR_MAP_Y; ++y){
             if (LCD1602_CHAR_MAP[x][y] == c){
                 ret = x << 4;
@@ -287,6 +288,7 @@ static int lcd1602_probe(struct platform_device* pdev){
 }
 
 static void lcd1602_remove(struct platform_device* pdev){
+    lcd1602_reset_screen();
     gpiod_put(lcd1602_gpio_dev.registerSelectGpio);
     gpiod_put(lcd1602_gpio_dev.rwGpio);
     gpiod_put(lcd1602_gpio_dev.enableGpio);
@@ -316,6 +318,7 @@ static int __init lcd1602_init(void){
 }
 
 static void __exit lcd1602_cleanup(void){
+    lcd1602_reset_screen();
     device_destroy(lcd1602_cls, MKDEV(lcd1602_device_major, 0));
     class_destroy(lcd1602_cls);
     platform_driver_unregister(&lcd1602_driver);
